@@ -1,5 +1,11 @@
+const PRODUCTION_API = "https://apps-ap-bocb.vercel.app/api";
+
+// NEXT_PUBLIC_API_URL wins; otherwise local dev talks to localhost and deployed sites to production
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? PRODUCTION_API
+    : "http://localhost:4000/api");
 
 export type Status = "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 export type Priority = "URGENT" | "HIGH" | "NORMAL" | "LOW";
