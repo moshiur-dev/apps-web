@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+/* Forest theme tokens — every colour in the UI comes from here */
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+
+  --color-forest-50: #f1f7f2;
+  --color-forest-100: #dcebdf;
+  --color-forest-200: #b9d7c0;
+  --color-forest-300: #8bbd99;
+  --color-forest-400: #5b9d70;
+  --color-forest-500: #3b8052;
+  --color-forest-600: #2b6640;
+  --color-forest-700: #215034;
+  --color-forest-800: #183d28;
+  --color-forest-900: #10291c;
+  --color-forest-950: #091a11;
+
+  --color-moss: #9bc53d;
+  --color-fern: #34d399;
+  --color-amber-leaf: #e9b949;
+  --color-bark: #8b5e34;
+  --color-cream: #f7f5ee;
+  --color-parchment: #fbfaf6;
+  --color-ink: #13261b;
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.6s ease-out both;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) }
+    50% { transform: translateY(-10px) }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(16px) }
+    to { opacity: 1; transform: translateY(0) }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-parchment);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- App theme: dark forest by default, light via data-theme ---------- */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+}
+
+:root {
+  --bg: #070d0a;
+  --surface: #0b1510;
+  --surface-2: #101d16;
+  --surface-3: #16271d;
+  --line: #1a2c22;
+  --line-strong: #264030;
+  --fg: #e7f0ea;
+  --muted: #93ab9c;
+  --faint: #5d7868;
+  --accent: #34d399;
+  --accent-strong: #10b981;
+  --accent-fg: #03140b;
+  --accent-soft: rgb(52 211 153 / 0.12);
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f3f6f3;
+  --surface: #ffffff;
+  --surface-2: #f7faf7;
+  --surface-3: #ecf2ed;
+  --line: #e0e8e2;
+  --line-strong: #c9d7cd;
+  --fg: #10241a;
+  --muted: #557063;
+  --faint: #8aa293;
+  --accent: #1f8f5f;
+  --accent-strong: #1f8f5f;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(31 143 95 / 0.1);
+  color-scheme: light;
+}
+
+.app-glow {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgb(52 211 153 / 0.07), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgb(155 197 61 / 0.05), transparent 70%);
+}
+
+.panel {
+  @apply rounded-2xl border border-line bg-surface;
+}
+
+.field {
+  @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-fg outline-none transition placeholder:text-faint focus:border-accent/60 focus:ring-4 focus:ring-accent/10;
+}
+
+.btn-accent {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent-strong px-4 py-2 text-sm font-semibold text-accent-fg shadow-lg shadow-accent/15 transition hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+}
+
+.btn-soft {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm font-medium text-fg transition hover:border-line-strong hover:bg-surface-3 disabled:opacity-50;
+}
+
+.label-xs {
+  @apply text-[10px] font-bold uppercase tracking-[0.16em] text-faint;
+}
+
+/* Subtle leaf texture used on hero + auth panels */
+.bg-canopy {
+  background-color: var(--color-forest-950);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgb(52 211 153 / 0.18), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 20%, rgb(155 197 61 / 0.14), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 50% 110%, rgb(233 185 73 / 0.1), transparent 60%);
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.text-gradient {
+  background: linear-gradient(100deg, #34d399 0%, #9bc53d 50%, #e9b949 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgb(0 0 0 / 0.12); border-radius: 8px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.dark-scroll::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.12); }
+
+.input {
+  @apply w-full rounded-xl border border-forest-200 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-forest-400/70 focus:border-forest-500 focus:ring-4 focus:ring-forest-500/15;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-forest-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-forest-700/20 transition hover:bg-forest-700 active:scale-[0.98] disabled:opacity-60;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-forest-700 transition hover:bg-forest-100;
+}
+
+.card {
+  @apply rounded-2xl border border-forest-100 bg-white shadow-[0_1px_2px_rgb(16_41_28/0.04),0_8px_24px_-12px_rgb(16_41_28/0.12)];
+}
