@@ -143,7 +143,7 @@ export async function api<T>(
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
   } catch {
-    throw new ApiError("Can't reach the server. Is the API running on port 4000?", 0);
+    throw new ApiError(`Can't reach the API at ${API_URL}. Check that it's running and that NEXT_PUBLIC_API_URL is set.`, 0);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
