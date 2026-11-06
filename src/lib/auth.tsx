@@ -3,11 +3,21 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api, tokenStore, type User } from "./api";
 
+/** Returned when the account still needs its email confirmed. No session is created. */
+export interface PendingVerification {
+  verificationRequired: true;
+  email: string;
+  emailed: boolean;
+  /** Only present outside production when SMTP isn't configured. */
+  verifyLink?: string;
+}
+
 interface AuthState {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  /** Resolves to a PendingVerification when the user must confirm their email first. */
+  register: (name: string, email: string, password: string, inviteToken?: string) => Promise<PendingVerification | null>;
   logout: () => void;
 }
 
@@ -37,9 +47,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     finish(await api("/auth/login", { method: "POST", body: { email, password } }));
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    finish(await api("/auth/register", { method: "POST", body: { name, email, password } }));
-  }, []);
+  const register = useCallback(
+    async (name: string, email: string, password: string, inviteToken?: string): Promise<PendingVerification | null> => {
+      const res = await api<{ token: string; user: User } | PendingVerification>("/auth/register", {
+        method: "POST",
+        body: { name, email, password, inviteToken },
+      });
+      if ("token" in res) {
+        finish(res);
+        return null;
+      }
+      return res;
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     tokenStore.clear();

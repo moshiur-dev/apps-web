@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AtSign,
+  Play,
+  Square,
+  Timer,
   CalendarClock,
   CalendarDays,
   ChevronLeft,
@@ -18,7 +21,7 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react";
-import { api, type Priority, type Status, type TaskDetail } from "@/lib/api";
+import { api, type Priority, type Status, type TaskDetail, type User } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { Avatar, PRIORITIES, STATUSES, Spinner, priorityMeta, statusMeta, timeAgo, tint } from "./ui";
@@ -46,6 +49,164 @@ function CommentBody({ text }: { text: string }) {
         part.startsWith("@") ? <span key={i} className="rounded bg-accent-soft px-1 font-semibold text-accent">{part}</span> : part,
       )}
     </p>
+  );
+}
+
+interface TimeRow {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationSec: number;
+  note: string;
+  user: User;
+}
+
+const clock = (sec: number) => {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+const hoursMinutes = (sec: number) => `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+
+/** Start/stop timer, manual time entries, and the log of who tracked what. */
+function TimeTracker({ taskId, editable }: { taskId: string; editable: boolean }) {
+  const { user } = useAuth();
+  const ws = useWorkspace();
+  const [entries, setEntries] = useState<TimeRow[]>([]);
+  const [now, setNow] = useState(() => Date.now());
+  const [minutes, setMinutes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(
+    () =>
+      api<{ entries: TimeRow[] }>(`/tasks/${taskId}/time`)
+        .then((r) => setEntries(r.entries))
+        .catch((e) => setError((e as Error).message)),
+    [taskId],
+  );
+
+  useEffect(() => {
+    load();
+  }, [load, ws.taskVersion]);
+
+  const running = entries.find((e) => !e.endedAt && e.user.id === user?.id) ?? null;
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+
+  const totalSec = entries.reduce((sum, e) => {
+    if (!e.endedAt) return sum + Math.max(0, Math.floor((now - new Date(e.startedAt).getTime()) / 1000));
+    return sum + e.durationSec;
+  }, 0);
+  const mySec = entries
+    .filter((e) => e.user.id === user?.id)
+    .reduce((sum, e) => sum + (e.endedAt ? e.durationSec : Math.max(0, Math.floor((now - new Date(e.startedAt).getTime()) / 1000))), 0);
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await load();
+      ws.touchTasks();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-7">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-bold">
+        <Timer size={15} /> Time tracked
+        <span className="ml-auto text-xs font-semibold text-muted">
+          Total {hoursMinutes(totalSec)}{mySec !== totalSec ? ` · you ${hoursMinutes(mySec)}` : ""}
+        </span>
+      </h3>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-2/50 p-3">
+        {running ? (
+          <>
+            <span className="font-mono text-lg font-bold tabular-nums text-accent">
+              {clock(Math.max(0, Math.floor((now - new Date(running.startedAt).getTime()) / 1000)))}
+            </span>
+            <button
+              className="btn-accent px-3 py-1.5 text-xs"
+              disabled={busy}
+              onClick={() => act(() => api(`/tasks/${taskId}/time/stop`, { method: "POST" }))}
+            >
+              <Square size={13} /> Stop timer
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn-soft px-3 py-1.5 text-xs"
+            disabled={busy || !editable}
+            onClick={() => act(() => api(`/tasks/${taskId}/time/start`, { method: "POST" }))}
+            title={editable ? "Starts a timer; any timer you already have running stops first" : "Guests can't track time"}
+          >
+            <Play size={13} /> Start timer
+          </button>
+        )}
+
+        {editable && (
+          <form
+            className="ml-auto flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const m = Math.round(Number(minutes));
+              if (!m || m < 1) return;
+              act(() => api(`/tasks/${taskId}/time`, { method: "POST", body: { minutes: m } })).then(() => setMinutes(""));
+            }}
+          >
+            <input
+              type="number"
+              min={1}
+              max={1440}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              placeholder="min"
+              aria-label="Minutes to add"
+              className="field w-20 py-1.5 text-xs"
+            />
+            <button className="btn-soft px-3 py-1.5 text-xs" disabled={busy || !minutes}>Add time</button>
+          </form>
+        )}
+      </div>
+
+      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+
+      {entries.length > 0 && (
+        <ul className="mt-3 divide-y divide-line rounded-xl border border-line">
+          {entries.slice(0, 20).map((e) => (
+            <li key={e.id} className="flex items-center gap-3 px-3 py-2 text-xs">
+              <Avatar user={e.user} size={20} />
+              <span className="min-w-0 flex-1 truncate">
+                <b className="text-fg">{e.user.name}</b>{" "}
+                <span className="text-faint">{new Date(e.startedAt).toLocaleDateString()}</span>
+              </span>
+              <span className="font-mono font-semibold tabular-nums text-fg">
+                {e.endedAt ? hoursMinutes(e.durationSec) : "running"}
+              </span>
+              {editable && e.user.id === user?.id && e.endedAt && (
+                <button
+                  onClick={() => act(() => api(`/time/${e.id}`, { method: "DELETE" }))}
+                  className="text-faint hover:text-red-500"
+                  title="Delete entry"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -266,6 +427,8 @@ export function TaskDrawer() {
                 rows={4}
                 className="field resize-y"
               />
+
+              <TimeTracker taskId={task.id} editable={editable} />
 
               {!task.parentId && (
                 <>

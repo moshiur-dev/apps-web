@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { useAuth, type PendingVerification } from "@/lib/auth";
 import { BRAND } from "@/lib/brand";
 import { Logo, Spinner } from "./ui";
 
@@ -24,6 +24,9 @@ export function AuthShell({ mode }: { mode: "login" | "register" }) {
   const [busy, setBusy] = useState(false);
   // Set when arriving from an invite link: /register?invite=<token>&email=<addr>
   const [invite, setInvite] = useState<{ token: string; email: string } | null>(null);
+  // Set after sign-up when the user still has to confirm their email
+  const [pending, setPending] = useState<PendingVerification | null>(null);
+  const [resent, setResent] = useState(false);
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -55,8 +58,16 @@ export function AuthShell({ mode }: { mode: "login" | "register" }) {
     setBusy(true);
     setError(null);
     try {
-      if (isLogin) await login(get("email"), get("password"));
-      else await register(get("name"), get("email"), get("password"));
+      if (isLogin) {
+        await login(get("email"), get("password"));
+      } else {
+        const needsVerify = await register(get("name"), get("email"), get("password"), invite?.token);
+        if (needsVerify) {
+          setPending(needsVerify);
+          setBusy(false);
+          return;
+        }
+      }
       if (invite) {
         // Join the inviting workspace straight away; the invite page explains any problem
         try {
@@ -69,9 +80,19 @@ export function AuthShell({ mode }: { mode: "login" | "register" }) {
       }
       router.replace("/app");
     } catch (err) {
-      setError((err as Error).message);
+      const msg = (err as Error).message;
+      // Unverified account trying to sign in: offer a fresh link for that address
+      if (isLogin && /verify/i.test(msg)) setPending({ verificationRequired: true, email: get("email"), emailed: true });
+      setError(msg);
       setBusy(false);
     }
+  }
+
+  async function resend() {
+    const email = pending?.email ?? "";
+    if (!email) return;
+    await api("/auth/resend-verification", { method: "POST", body: { email } }).catch(() => {});
+    setResent(true);
   }
 
   return (
@@ -79,6 +100,31 @@ export function AuthShell({ mode }: { mode: "login" | "register" }) {
       <section className="flex flex-col px-6 py-8 sm:px-12">
         <Link href="/"><Logo /></Link>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
+          {pending ? (
+            <div className="space-y-4">
+              <CheckCircle2 size={40} className="text-forest-600" />
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">Check your email</h1>
+              <p className="text-sm text-forest-600">
+                We sent a confirmation link to <b className="text-forest-800">{pending.email}</b>. Open it to activate your account, then sign in.
+              </p>
+              {!pending.emailed && pending.verifyLink && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                  Email isn&apos;t configured on this server. Development link:{" "}
+                  <a className="break-all underline" href={pending.verifyLink}>{pending.verifyLink}</a>
+                </p>
+              )}
+              <p className="text-sm text-forest-600">
+                {resent ? "A new link is on its way." : "Didn't get it? Check spam, or "}
+                {!resent && (
+                  <button type="button" onClick={resend} className="font-semibold text-forest-700 underline-offset-4 hover:underline">
+                    send a new link
+                  </button>
+                )}
+              </p>
+              <Link href="/login" className="btn-primary inline-flex w-full justify-center py-3">Go to sign in</Link>
+            </div>
+          ) : (
+          <>
           <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
             {isLogin ? "Welcome back" : "Create your workspace"}
           </h1>
@@ -117,12 +163,15 @@ export function AuthShell({ mode }: { mode: "login" | "register" }) {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-forest-600">
+          </>
+          )}
+
+          {!pending && <p className="mt-6 text-center text-sm text-forest-600">
             {isLogin ? "New here? " : "Already have an account? "}
             <Link href={`${isLogin ? "/register" : "/login"}${invite ? `?invite=${invite.token}&email=${encodeURIComponent(invite.email)}` : ""}`} className="font-semibold text-forest-700 underline-offset-4 hover:underline">
               {isLogin ? "Create an account" : "Sign in"}
             </Link>
-          </p>
+          </p>}
         </div>
       </section>
 
