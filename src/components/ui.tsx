@@ -9,6 +9,7 @@ export const STATUSES: { id: Status; label: string; color: string }[] = [
   { id: "TODO", label: "To Do", color: "#94a39a" },
   { id: "IN_PROGRESS", label: "In Progress", color: "#e9b949" },
   { id: "REVIEW", label: "In Review", color: "#2fb6a4" },
+  { id: "SECOND_EYE", label: "Review of second eye", color: "#a78bfa" },
   { id: "DONE", label: "Completed", color: "#34d399" },
 ];
 

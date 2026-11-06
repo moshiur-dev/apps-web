@@ -7,7 +7,7 @@ export const API_URL =
     ? PRODUCTION_API
     : "http://localhost:4000/api");
 
-export type Status = "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+export type Status = "TODO" | "IN_PROGRESS" | "REVIEW" | "SECOND_EYE" | "DONE";
 export type Priority = "URGENT" | "HIGH" | "NORMAL" | "LOW";
 export type Role = "OWNER" | "ADMIN" | "MEMBER" | "GUEST";
 

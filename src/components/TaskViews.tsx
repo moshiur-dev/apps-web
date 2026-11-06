@@ -118,6 +118,7 @@ function QuickAdd({ listId, status, compact = false }: { listId: string; status:
   const ws = useWorkspace();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
   if (!ws.can.edit) return null;
 
   if (!open) {
@@ -130,25 +131,45 @@ function QuickAdd({ listId, status, compact = false }: { listId: string; status:
       </button>
     );
   }
+  const save = async () => {
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    try {
+      await ws.createTask(listId, { title: title.trim(), status });
+      setTitle("");
+      setOpen(false);
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <form
       className={compact ? "rounded-xl border border-accent/40 bg-surface-2 p-2.5" : "px-4 py-2"}
-      onSubmit={async (e) => {
+      onSubmit={(e) => {
         e.preventDefault();
-        if (!title.trim()) return;
-        await ws.createTask(listId, { title: title.trim(), status }).catch((err) => alert(err.message));
-        setTitle("");
+        save();
       }}
     >
       <input
         autoFocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => !title && setOpen(false)}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-        placeholder="Task name — Enter to save"
-        className="w-full bg-transparent text-sm text-fg outline-none placeholder:text-faint"
+        placeholder="Task name"
+        aria-label="Task name"
+        className="field py-2 text-sm font-semibold"
       />
+      <div className="mt-2 flex items-center justify-end gap-2">
+        <button type="button" className="btn-soft px-3 py-1.5 text-xs" onClick={() => { setTitle(""); setOpen(false); }}>
+          Cancel
+        </button>
+        <button type="submit" className="btn-accent px-3 py-1.5 text-xs" disabled={!title.trim() || saving}>
+          {saving ? "Saving…" : "Save task"}
+        </button>
+      </div>
     </form>
   );
 }
